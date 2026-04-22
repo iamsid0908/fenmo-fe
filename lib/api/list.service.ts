@@ -5,9 +5,22 @@ import type {
   GetUserListExpensesQuery,
   GetUserListExpensesResponse,
   GetUserListResponse,
+  UserList,
+  UserListRaw,
 } from "@/types/list";
 
 const USER_LIST = "/user-list";
+
+/** Normalize fields to camelCase — handles both Go-capitalized (ID/Name) and lowercase (id/name) responses */
+function normalizeUserList(raw: UserListRaw): UserList {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = raw as any;
+  return {
+    id: raw.ID ?? r.id,
+    name: raw.Name ?? r.name ?? "",
+    description: raw.Description ?? r.description ?? "",
+  };
+}
 
 export const listService = {
   /**
@@ -35,5 +48,8 @@ export const listService = {
    * Get all user lists (for selectors).
    * GET /user-list/get
    */
-  getUserList: () => apiClient.get<GetUserListResponse>(`${USER_LIST}/get`),
+  getUserList: async (): Promise<{ data: UserList[] }> => {
+    const res = await apiClient.get<GetUserListResponse>(`${USER_LIST}/get`);
+    return { ...res, data: (res.data ?? []).map(normalizeUserList) };
+  },
 };

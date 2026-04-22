@@ -37,4 +37,20 @@ export interface UserList {
   name: string;
   description: string;
 }
-export type GetUserListResponse = ApiResponse<UserList[]>;
+
+/** Raw shape from GET /user-list/get — Go may return capitalized or lowercase fields */
+export interface UserListRaw {
+  // capitalized (Go struct default)
+  ID?: number;
+  Name?: string;
+  Description?: string;
+  // lowercase alternatives
+  id?: number;
+  name?: string;
+  description?: string;
+  UserId?: number;
+  CreatedAt?: string;
+  UpdatedAt?: string;
+}
+
+export type GetUserListResponse = ApiResponse<UserListRaw[]>;

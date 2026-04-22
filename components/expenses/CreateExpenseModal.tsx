@@ -161,14 +161,16 @@ function SelectOrCreate({
                 setCreating(false);
               }}
               className={[
-                "flex w-full items-center justify-between px-3.5 py-2.5 text-sm transition-colors",
-                item.id === selectedId
+                "flex w-full items-center justify-between px-3.5 py-2.5 text-sm transition-colors text-left",
+                selectedId !== null && item.id === selectedId
                   ? "bg-indigo-50 text-indigo-700 font-medium"
                   : "text-gray-800 hover:bg-gray-50",
               ].join(" ")}
             >
-              {item.name}
-              {item.id === selectedId && (
+              <span className="flex-1 truncate">
+                {item.name}
+              </span>
+              {selectedId !== null && item.id === selectedId && (
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   className="h-3.5 w-3.5 shrink-0"

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { CreateListModal } from "@/components/lists/CreateListModal";
 import { ListCard } from "@/components/lists/ListCard";
@@ -100,7 +101,13 @@ export default function DashboardPage() {
             <span className="text-xl font-extrabold tracking-tight text-indigo-600">
               Fenmo
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/expenses"
+                className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors"
+              >
+                Expenses
+              </Link>
               <Button
                 variant="secondary"
                 onClick={() => setExpenseModalOpen(true)}
