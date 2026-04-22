@@ -58,15 +58,52 @@ function SelectOrCreate({
   const [newName, setNewName] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
   const [createLoading, setCreateLoading] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  // dropdown position computed from trigger button
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const newInputRef = useRef<HTMLInputElement>(null);
 
   const selected = items.find((i) => i.id === selectedId);
 
-  // close on outside click
+  // Compute fixed position from trigger element
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setDropdownStyle({
+      position: "fixed",
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (open) updatePosition();
+  }, [open, updatePosition]);
+
+  // Keep dropdown aligned on scroll / resize
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open, updatePosition]);
+
+  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(target) &&
+        !(document.getElementById("selectorcreate-portal")?.contains(target))
+      ) {
         setOpen(false);
         setCreating(false);
       }
@@ -100,12 +137,147 @@ function SelectOrCreate({
     }
   }
 
+  const dropdown = (
+    <div
+      id="selectorcreate-portal"
+      style={dropdownStyle}
+      className="rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden"
+    >
+      {/* Items list */}
+      <ul className="max-h-48 overflow-y-auto py-1">
+        {items.length === 0 && (
+          <li className="px-3.5 py-2.5 text-sm text-gray-400 italic">
+            No items yet
+          </li>
+        )}
+        {items.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()} // prevent blur before onClick
+              onClick={() => {
+                onSelect(item.id);
+                setOpen(false);
+                setCreating(false);
+              }}
+              className={[
+                "flex w-full items-center justify-between px-3.5 py-2.5 text-sm transition-colors",
+                item.id === selectedId
+                  ? "bg-indigo-50 text-indigo-700 font-medium"
+                  : "text-gray-800 hover:bg-gray-50",
+              ].join(" ")}
+            >
+              {item.name}
+              {item.id === selectedId && (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-3.5 w-3.5 shrink-0"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {/* Create new section */}
+      <div className="border-t border-gray-100">
+        {creating ? (
+          <div className="flex items-start gap-2 p-2">
+            <div className="flex-1 flex flex-col gap-1">
+              <input
+                ref={newInputRef}
+                type="text"
+                placeholder={`${createLabel} name…`}
+                value={newName}
+                onChange={(e) => {
+                  setNewName(e.target.value);
+                  setCreateError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleCreate();
+                  }
+                  if (e.key === "Escape") setCreating(false);
+                }}
+                className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+              />
+              {createError && (
+                <p className="text-xs text-red-500">{createError}</p>
+              )}
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              loading={createLoading}
+              onClick={handleCreate}
+            >
+              Add
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreating(false);
+                setNewName("");
+                setCreateError(null);
+              }}
+              className="p-1.5 text-gray-400 hover:text-gray-600"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setCreating(true)}
+            className="flex w-full items-center gap-2 px-3.5 py-2.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {createLabel}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="flex flex-col gap-1.5" ref={ref}>
+    <div className="flex flex-col gap-1.5" ref={wrapperRef}>
       <label className="text-sm font-medium text-gray-700">{label}</label>
 
       {/* Trigger */}
       <button
+        ref={triggerRef}
         type="button"
         disabled={loading}
         onClick={() => setOpen((p) => !p)}
@@ -135,136 +307,9 @@ function SelectOrCreate({
       </button>
       {error && <p className="text-xs text-red-500">{error}</p>}
 
-      {/* Dropdown */}
-      {open && (
-        <div className="relative z-20">
-          <div className="absolute top-1 left-0 right-0 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
-            {/* Items list */}
-            <ul className="max-h-44 overflow-y-auto py-1">
-              {items.length === 0 && (
-                <li className="px-3.5 py-2 text-sm text-gray-400 italic">
-                  No items yet
-                </li>
-              )}
-              {items.map((item) => (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSelect(item.id);
-                      setOpen(false);
-                      setCreating(false);
-                    }}
-                    className={[
-                      "flex w-full items-center justify-between px-3.5 py-2 text-sm transition-colors",
-                      item.id === selectedId
-                        ? "bg-indigo-50 text-indigo-700 font-medium"
-                        : "text-gray-800 hover:bg-gray-50",
-                    ].join(" ")}
-                  >
-                    {item.name}
-                    {item.id === selectedId && (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-3.5 w-3.5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            {/* Create new section */}
-            <div className="border-t border-gray-100">
-              {creating ? (
-                <div className="flex items-start gap-2 p-2">
-                  <div className="flex-1 flex flex-col gap-1">
-                    <input
-                      ref={newInputRef}
-                      type="text"
-                      placeholder={`${createLabel} name…`}
-                      value={newName}
-                      onChange={(e) => {
-                        setNewName(e.target.value);
-                        setCreateError(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleCreate();
-                        }
-                        if (e.key === "Escape") setCreating(false);
-                      }}
-                      className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                    />
-                    {createError && (
-                      <p className="text-xs text-red-500">{createError}</p>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    loading={createLoading}
-                    onClick={handleCreate}
-                  >
-                    Add
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCreating(false);
-                      setNewName("");
-                      setCreateError(null);
-                    }}
-                    className="p-1.5 text-gray-400 hover:text-gray-600"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setCreating(true)}
-                  className="flex w-full items-center gap-2 px-3.5 py-2.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  {createLabel}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Dropdown rendered in a portal to escape overflow-hidden / overflow-y-auto */}
+      {open && typeof document !== "undefined" &&
+        createPortal(dropdown, document.body)}
     </div>
   );
 }
