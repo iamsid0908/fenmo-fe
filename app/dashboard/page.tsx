@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { CreateListModal } from "@/components/lists/CreateListModal";
 import { ListCard } from "@/components/lists/ListCard";
+import { CreateExpenseModal } from "@/components/expenses/CreateExpenseModal";
 import { listService } from "@/lib/api/list.service";
 import { ApiError } from "@/lib/api/client";
 import type { CreateUserListData, UserListExpenseSummary } from "@/types/list";
+import type { ExpenseData } from "@/types/expense";
 
 const PAGE_LIMIT = 12;
 
@@ -20,6 +22,7 @@ export default function DashboardPage() {
   const [fetchLoading, setFetchLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
 
   const fetchLists = useCallback(
     async (pageNum: number, replace = false) => {
@@ -73,6 +76,11 @@ export default function DashboardPage() {
     fetchLists(nextPage);
   }
 
+  function handleExpenseCreated(_expense: ExpenseData) {
+    // Refresh list totals so cards reflect the new expense
+    fetchLists(1, true);
+  }
+
   // ── Loading skeleton ────────────────────────────────────────────────────────
   const Skeleton = () => (
     <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-5 animate-pulse">
@@ -92,26 +100,21 @@ export default function DashboardPage() {
             <span className="text-xl font-extrabold tracking-tight text-indigo-600">
               Fenmo
             </span>
-            <Button
-              onClick={() => setModalOpen(true)}
-              size="md"
-              leftIcon={
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              }
-            >
-              Create List
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setExpenseModalOpen(true)}
+                size="md"
+              >
+                Add Expense
+              </Button>
+              <Button
+                onClick={() => setModalOpen(true)}
+                size="md"
+              >
+                Create List
+              </Button>
+            </div>
           </div>
         </header>
 
@@ -208,6 +211,12 @@ export default function DashboardPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onCreated={handleCreated}
+      />
+
+      <CreateExpenseModal
+        open={expenseModalOpen}
+        onClose={() => setExpenseModalOpen(false)}
+        onCreated={handleExpenseCreated}
       />
     </>
   );
